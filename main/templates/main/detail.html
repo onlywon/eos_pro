@@ -4,22 +4,27 @@
     <meta charset="UTF-8">
     <title>{{ event.title }} - Workroom</title>
     <style>
-        /* [기본 테마] */
+        /* [기본 테마 유지] */
         body { background-color: #1e1e1e; color: #e0e0e0; font-family: 'Suit', sans-serif; margin: 0; }
-        .container { max-width: 1100px; margin: 0 auto; padding: 30px; }
+        .container { max-width: 1200px; margin: 0 auto; padding: 30px; }
         
         /* [헤더] */
         .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #444; padding-bottom: 20px; margin-bottom: 30px; }
-        .event-title { font-size: 32px; font-weight: bold; color: #00ff00; margin: 0; }
+        .event-title { font-size: 32px; font-weight: bold; color: #00ff00; margin: 0; display: flex; align-items: center; gap: 10px; }
         .event-meta { color: #888; font-size: 14px; margin-top: 5px; }
+        
+        /* [뱃지 스타일] */
+        .badge { font-size: 14px; padding: 4px 10px; border-radius: 4px; background: #444; color: #ccc; }
+        .badge-status { background: #007acc; color: white; }
+
         .btn-back { color: #aaa; text-decoration: none; font-size: 14px; border: 1px solid #444; padding: 5px 10px; border-radius: 4px; transition: 0.3s; }
         .btn-back:hover { background: #333; color: white; }
 
-        /* [탭 메뉴] */
+        /* [탭 메뉴 - 5개로 확장] */
         .tab-menu { display: flex; gap: 5px; margin-bottom: 20px; border-bottom: 2px solid #333; }
         .tab-btn { 
-            padding: 12px 25px; background: #2a2a2a; border: none; color: #888; 
-            font-size: 16px; font-weight: bold; cursor: pointer; 
+            padding: 12px 20px; background: #2a2a2a; border: none; color: #888; 
+            font-size: 15px; font-weight: bold; cursor: pointer; 
             border-radius: 8px 8px 0 0; transition: 0.3s; margin-bottom: -2px;
         }
         .tab-btn:hover { background: #333; color: white; }
@@ -29,6 +34,16 @@
         .tab-content { display: none; animation: fadeIn 0.3s; }
         .tab-content.active { display: block; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* [대시보드 계기판 스타일 (신규)] */
+        .grid-dashboard { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 20px; }
+        .dash-card { background: #252526; padding: 20px; border-radius: 8px; text-align: center; box-shadow: 0 4px 6px rgba(0,0,0,0.3); border: 1px solid #333; }
+        .dash-label { color: #aaa; font-size: 13px; margin-bottom: 5px; font-weight: bold; }
+        .dash-value { font-size: 26px; font-weight: bold; color: white; font-family: 'Consolas', monospace; } /* 숫자 폰트 강조 */
+        .dash-sub { font-size: 12px; color: #666; margin-top: 5px; }
+        
+        .progress-bg { width: 100%; background: #444; height: 8px; border-radius: 4px; margin-top: 10px; overflow: hidden; }
+        .progress-fill { height: 100%; background: #00ff00; width: 0%; transition: width 1s ease-in-out; }
 
         /* [박스 스타일] */
         .box { background-color: #252526; padding: 25px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
@@ -41,9 +56,11 @@
         /* [폼 & 버튼] */
         label { display: block; color: #aaa; font-size: 13px; margin-bottom: 5px; }
         .form-input { background: #333; border: 1px solid #444; color: white; padding: 10px; border-radius: 4px; width: 100%; box-sizing: border-box; }
-        .btn-save { background: #007acc; color: white; border: none; padding: 12px; border-radius: 4px; cursor: pointer; font-weight: bold; width: 100%; margin-top: 10px; }
+        .form-input:focus { border-color: #007acc; outline: none; }
         
-        /* [삭제 버튼 스타일 추가] */
+        .btn-save { background: #007acc; color: white; border: none; padding: 12px; border-radius: 4px; cursor: pointer; font-weight: bold; width: 100%; margin-top: 10px; transition: 0.3s; }
+        .btn-save:hover { background: #005a9e; }
+        
         .btn-del { background: #ff4b4b; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; }
         .btn-del:hover { background: #cc0000; }
 
@@ -55,16 +72,16 @@
         /* [텍스트 유틸] */
         .text-warn { color: #ff4b4b; } .text-safe { color: #00ff00; } .text-yellow { color: #ffeb3b; }
         
-        /* [이미지 (도면)] */
+        /* [이미지] */
         .graph-img { width: 100%; border-radius: 5px; background-color: #fff; margin-bottom: 20px; }
     </style>
     <script>
-        function openTab(tabName, btn) {
+        function openTab(id, btn) {
             var contents = document.getElementsByClassName("tab-content");
             for (var i = 0; i < contents.length; i++) { contents[i].classList.remove("active"); }
             var btns = document.getElementsByClassName("tab-btn");
             for (var i = 0; i < btns.length; i++) { btns[i].classList.remove("active"); }
-            document.getElementById(tabName).classList.add("active");
+            document.getElementById(id).classList.add("active");
             btn.classList.add("active");
         }
     </script>
@@ -73,49 +90,123 @@
     <div class="container">
         <div class="header">
             <div>
-                <h1 class="event-title">{{ event.title }}</h1>
-                <div class="event-meta">{{ event.date }} | {{ event.get_event_type_display }}</div>
+                <h1 class="event-title">
+                    {{ event.title }} 
+                    <span class="badge badge-status" style="margin-left:10px; font-size:16px;">{{ event.get_status_display }}</span>
+                </h1>
+                <div class="event-meta">
+                    📅 {{ event.date }} | 🏢 {{ event.client_name|default:"클라이언트 미정" }}
+                </div>
             </div>
             <a href="{% url 'index' %}" class="btn-back">← 대시보드</a>
         </div>
 
         <div class="tab-menu">
-            <button class="tab-btn active" onclick="openTab('step1', this)">1. 장소/무대 설계</button>
-            <button class="tab-btn" onclick="openTab('step2', this)">2. 음향/조명 분석</button>
-            <button class="tab-btn" onclick="openTab('step3', this)">3. 일정 관리</button>
-            <button class="tab-btn" onclick="openTab('step4', this)">4. 큐시트</button>
+            <button class="tab-btn active" onclick="openTab('tab1', this)">1. 프로젝트 상황실</button>
+            <button class="tab-btn" onclick="openTab('tab2', this)">2. 공간 설계</button>
+            <button class="tab-btn" onclick="openTab('tab3', this)">3. 음향/조명</button>
+            <button class="tab-btn" onclick="openTab('tab4', this)">4. 일정 관리</button>
+            <button class="tab-btn" onclick="openTab('tab5', this)">5. 큐시트</button>
         </div>
 
-        <div id="step1" class="tab-content active">
+        <div id="tab1" class="tab-content active">
+            <div class="grid-dashboard">
+                <div class="dash-card">
+                    <div class="dash-label">D-Day</div>
+                    <div class="dash-value" style="color: {% if d_day < 7 %}#ff4b4b{% else %}white{% endif %};">
+                        {% if d_day == 0 %} D-Day {% elif d_day > 0 %} D-{{ d_day }} {% else %} 종료 {% endif %}
+                    </div>
+                    <div class="dash-sub">{{ event.date|date:"Y.m.d" }}</div>
+                </div>
+                
+                <div class="dash-card">
+                    <div class="dash-label">총 매출(예산)</div>
+                    <div class="dash-value">₩ {{ fmt_budget }}</div>
+                    <div class="dash-sub">예상 비용: ₩ {{ fmt_cost }}</div>
+                </div>
+
+                <div class="dash-card">
+                    <div class="dash-label">예상 순이익 (NET)</div>
+                    <div class="dash-value" style="color: {% if profit_raw < 0 %}#ff4b4b{% else %}#00ff00{% endif %};">
+                        {{ fmt_profit }}
+                    </div>
+                    <div class="dash-sub">
+                        수익률: <span style="background: {% if profit_rate < 0 %}#ff4b4b{% else %}#217346{% endif %}; color:white; padding:2px 6px; border-radius:3px;">{{ profit_rate }}%</span>
+                    </div>
+                </div>
+
+                <div class="dash-card">
+                    <div class="dash-label">준비 진척률</div>
+                    <div class="dash-value">{{ progress }}%</div>
+                    <div class="progress-bg"><div class="progress-fill" style="width: {{ progress }}%;"></div></div>
+                </div>
+            </div>
+
+            <div class="grid-2">
+                <div class="box">
+                    <div class="section-title">📝 기본 정보 관리</div>
+                    <form method="post">
+                        {% csrf_token %}
+                        <input type="hidden" name="update_overview" value="true">
+                        
+                        <div class="grid-2">
+                            <div><label>프로젝트명</label>{{ overview_form.title }}</div>
+                            <div><label>클라이언트</label>{{ overview_form.client_name }}</div>
+                        </div>
+                        <div class="grid-2" style="margin-top:10px;">
+                            <div><label>행사일</label>{{ overview_form.date }}</div>
+                            <div><label>진행 상태</label>{{ overview_form.status }}</div>
+                        </div>
+                        <div class="grid-2" style="margin-top:10px;">
+                            <div><label>장소명</label>{{ overview_form.venue_name }}</div>
+                            <div><label>유형</label><input type="text" value="{{ event.get_event_type_display }}" class="form-input" disabled style="color:#888;"></div>
+                        </div>
+                        <div class="grid-2" style="margin-top:10px;">
+                            <div><label>매출 (총 예산)</label>{{ overview_form.budget }}</div>
+                            <div><label>예상 비용 (지출)</label>{{ overview_form.expected_cost }}</div>
+                        </div>
+                        
+                        <button type="submit" class="btn-save">상황판 업데이트</button>
+                    </form>
+                </div>
+                
+                <div class="box">
+                    <div class="section-title">📌 주요 메모</div>
+                    <textarea class="form-input" style="height:280px; resize:none; background:#222;" placeholder="이슈사항, 연락처, 특이사항 등을 자유롭게 기록하세요."></textarea>
+                </div>
+            </div>
+        </div>
+
+        <div id="tab2" class="tab-content">
             <div class="grid-2">
                 <div class="box">
                     <div class="section-title">🏗️ 설계 데이터 입력</div>
                     <form method="post">
                         {% csrf_token %}
-                        <input type="hidden" name="update_event" value="true">
+                        <input type="hidden" name="update_space" value="true">
                         
                         <label style="color:#007acc; margin-top:10px;">📐 공간 정보</label>
                         <div class="grid-3">
-                            <div><label>가로(m)</label>{{ event_form.venue_width }}</div>
-                            <div><label>깊이(m)</label>{{ event_form.venue_depth }}</div>
-                            <div><label>천고(m)</label>{{ event_form.venue_height }}</div>
+                            <div><label>가로(m)</label>{{ space_form.venue_width }}</div>
+                            <div><label>깊이(m)</label>{{ space_form.venue_depth }}</div>
+                            <div><label>천고(m)</label>{{ space_form.venue_height }}</div>
                         </div>
 
                         <label style="color:#007acc; margin-top:20px;">🎪 무대 정보</label>
                         <div class="grid-3">
-                            <div><label>가로(m)</label>{{ event_form.stage_width }}</div>
-                            <div><label>깊이(m)</label>{{ event_form.stage_depth }}</div>
-                            <div><label>높이(m)</label>{{ event_form.stage_height }}</div>
+                            <div><label>가로(m)</label>{{ space_form.stage_width }}</div>
+                            <div><label>깊이(m)</label>{{ space_form.stage_depth }}</div>
+                            <div><label>높이(m)</label>{{ space_form.stage_height }}</div>
                         </div>
 
                         <label style="color:#007acc; margin-top:20px;">⚙️ 옵션</label>
-                        <div class="grid-3">
-                            <div style="grid-column: span 2;"><label>객석 배치 타입</label>{{ event_form.seating_type }}</div>
-                            <div><label>객석간격</label>{{ event_form.table_gap }}</div>
+                        <div class="grid-2">
+                            <div><label>객석 배치 타입</label>{{ space_form.seating_type }}</div>
+                            <div><label>객석간격</label>{{ space_form.table_gap }}</div>
                         </div>
-                        <div class="grid-3" style="margin-top:10px;">
-                            <div>{{ event_form.has_virgin_road }} 버진로드</div>
-                            <div>{{ event_form.has_foh }} FOH</div>
+                        <div class="grid-2" style="margin-top:10px;">
+                            <div style="padding-top:10px;">{{ space_form.has_virgin_road }} 버진로드 포함</div>
+                            <div style="padding-top:10px;">{{ space_form.has_foh }} FOH 포함</div>
                         </div>
                         
                         <button type="submit" class="btn-save">설계 시뮬레이션 (저장)</button>
@@ -124,7 +215,6 @@
 
                 <div class="box">
                     <div class="section-title">📊 공간 분석 & 배치도</div>
-                    
                     {% if graph_space %}
                         <img src="data:image/png;base64,{{ graph_space }}" class="graph-img">
                     {% endif %}
@@ -151,7 +241,7 @@
             </div>
         </div>
 
-        <div id="step2" class="tab-content">
+        <div id="tab3" class="tab-content">
             <div class="grid-2">
                 <div class="box">
                     <div class="section-title">🔊 음향 커버리지 (Audio)</div>
@@ -175,7 +265,7 @@
                         <img src="data:image/png;base64,{{ graph_light }}" class="graph-img">
                     {% endif %}
 
-                    <div style="background:#444; color:#fff; padding:10px; border-radius:5px; margin-bottom:10px; text-align:center; font-weight:bold;">
+                    <div style="background:#444; color:#fff; padding:10px; border-radius:5px; margin-bottom:10px; text-align:center; font-weight:bold; border: 1px solid #00ff00;">
                         {{ gen_info }}
                     </div>
 
@@ -201,7 +291,7 @@
             </div>
         </div>
 
-        <div id="step3" class="tab-content">
+        <div id="tab4" class="tab-content">
             <div class="grid-2">
                 <div class="box">
                     <div class="section-title">📅 프로젝트 일정</div>
@@ -234,20 +324,17 @@
                     <form method="post">
                         {% csrf_token %}
                         <input type="hidden" name="add_task" value="true">
-                        
                         <label>할 일 내용</label>
                         {{ task_form.content }}
-                        
                         <label style="margin-top:15px;">마감일</label>
                         {{ task_form.deadline }}
-                        
                         <button type="submit" class="btn-save">일정 등록</button>
                     </form>
                 </div>
             </div>
         </div>
 
-        <div id="step4" class="tab-content">
+        <div id="tab5" class="tab-content">
             <div class="box">
                 <div class="section-title" style="display:flex; justify-content:space-between;">
                     <span>📝 큐시트 (Cue Sheet)</span>

@@ -8,6 +8,25 @@ from datetime import timedelta
 class Event(models.Model):
     author = models.ForeignKey(User, on_delete=models.CASCADE)
     title = models.CharField(max_length=200, verbose_name="프로젝트명")
+    
+    # [관리 정보] (기존 항목 유지)
+    client_name = models.CharField(max_length=100, verbose_name="클라이언트(발주처)", default="", blank=True)
+    venue_name = models.CharField(max_length=100, verbose_name="장소명", default="", blank=True)
+    budget = models.IntegerField(default=0, verbose_name="총 예산(원)")
+    
+    # ▼▼▼ [신규 추가] 상황실용 데이터 (지출, 진행상태) ▼▼▼
+    expected_cost = models.IntegerField(default=0, verbose_name="예상 지출(비용)")
+    
+    STATUS_CHOICES = [
+        ('inquiry', '🟡 문의/접수'),
+        ('design', '🔵 디자인/견적 중'),
+        ('confirmed', '🟢 계약 확정 (준비 중)'),
+        ('onsite', '🔴 현장 운영 중'),
+        ('done', '⚪ 행사 종료'),
+    ]
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='inquiry', verbose_name="진행 상태")
+    # ▲▲▲ 추가 끝 ▲▲▲
+
     date = models.DateField(verbose_name="행사일")
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -35,14 +54,13 @@ class Event(models.Model):
     # [4] 세부 설계 옵션
     table_gap = models.FloatField(default=3.0, verbose_name="객석 간격(m)")
     
-    # ▼▼▼ [신규 추가] 객석 배치 타입 (업그레이드 #1) ▼▼▼
+    # [객석 배치 타입]
     SEATING_CHOICES = [
         ('banquet', '연회식 (Round Table)'),
         ('theater', '극장식 (Theater / Chairs only)'),
         ('classroom', '강의식 (Classroom / Table & Chair)'),
     ]
     seating_type = models.CharField(max_length=20, choices=SEATING_CHOICES, default='banquet', verbose_name="객석 배치 유형")
-    # ▲▲▲ 추가 끝 ▲▲▲
 
     has_virgin_road = models.BooleanField(default=False, verbose_name="버진로드 포함")
     has_foh = models.BooleanField(default=True, verbose_name="FOH(콘솔) 배치")

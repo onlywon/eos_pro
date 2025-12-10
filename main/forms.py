@@ -1,25 +1,79 @@
 from django import forms
-from .models import Cue, Event, Task # Task 모델 추가
+from .models import Cue, Event, Task
 
-# 1. [새 프로젝트 등록용] 신청서
+# ========================================================
+# 1. [초기 생성용] 프로젝트 생성 폼 (Create)
+# ========================================================
 class EventForm(forms.ModelForm):
     class Meta:
         model = Event
+        # 생성 시점에는 핵심 정보만 입력받습니다.
+        fields = ['title', 'client_name', 'venue_name', 'budget', 'date', 'event_type']
+        
+        labels = {
+            'title': '프로젝트 명',
+            'client_name': '클라이언트',
+            'venue_name': '장소명',
+            'budget': '총 예산(원)',
+            'date': '행사 날짜',
+            'event_type': '행사 종류',
+        }
+        
+        widgets = {
+            'title': forms.TextInput(attrs={'class': 'form-input', 'style': 'width: 100%;'}),
+            'client_name': forms.TextInput(attrs={'class': 'form-input', 'placeholder': '예: 삼성전자'}),
+            'venue_name': forms.TextInput(attrs={'class': 'form-input', 'placeholder': '예: 코엑스 그랜드볼룸'}),
+            'budget': forms.NumberInput(attrs={'class': 'form-input', 'placeholder': '숫자만 입력'}),
+            'date': forms.DateInput(attrs={'class': 'form-input', 'type': 'date'}),
+            'event_type': forms.Select(attrs={'class': 'form-input'}),
+        }
+
+# ========================================================
+# 2. [Tab 1용] 개요 및 재무 관리 폼 (Dashboard) - 신규
+# ========================================================
+class EventOverviewForm(forms.ModelForm):
+    class Meta:
+        model = Event
+        # 상황실에서 수정할 정보들 (진행상태, 비용 포함)
+        fields = ['title', 'client_name', 'venue_name', 'date', 'status', 'budget', 'expected_cost']
+        
+        labels = {
+            'title': '프로젝트 명',
+            'client_name': '클라이언트',
+            'venue_name': '장소명',
+            'date': '행사 날짜',
+            'status': '진행 상태',       # [New]
+            'budget': '매출 (총 예산)',
+            'expected_cost': '예상 지출', # [New]
+        }
+        
+        widgets = {
+            'title': forms.TextInput(attrs={'class': 'form-input'}),
+            'client_name': forms.TextInput(attrs={'class': 'form-input'}),
+            'venue_name': forms.TextInput(attrs={'class': 'form-input'}),
+            'date': forms.DateInput(attrs={'class': 'form-input', 'type': 'date'}),
+            # 상태 변경은 눈에 띄게 스타일링
+            'status': forms.Select(attrs={'class': 'form-input', 'style': 'font-weight:bold; color:#00ff00;'}),
+            'budget': forms.NumberInput(attrs={'class': 'form-input'}),
+            'expected_cost': forms.NumberInput(attrs={'class': 'form-input', 'placeholder': '지출 예상액 입력'}),
+        }
+
+# ========================================================
+# 3. [Tab 2용] 공간 설계 폼 (Space Design) - 분리됨
+# ========================================================
+class EventSpaceForm(forms.ModelForm):
+    class Meta:
+        model = Event
+        # 공간/무대/객석 관련 필드만 모음
         fields = [
-            'title', 'date', 'event_type', 
-            'seating_type', # [신규] 객석 배치 타입 추가
             'venue_width', 'venue_depth', 'venue_height', 
             'has_stage', 'stage_width', 'stage_depth', 'stage_height',
-            'table_gap', 'has_virgin_road', 'has_foh', 
+            'seating_type', 'table_gap', 'has_virgin_road', 'has_foh', 
             'has_sound', 'has_lighting', 'has_screen', 'has_booth', 'has_print'
         ]
         
-        # 대표님이 작성하신 라벨 설정 그대로 유지
         labels = {
-            'title': '프로젝트 명',
-            'date': '행사 날짜',
-            'event_type': '행사 종류',
-            'seating_type': '객석 배치', # [신규]
+            'seating_type': '객석 배치',
             'venue_width': '공간 가로(m)',
             'venue_depth': '공간 깊이(m)',
             'venue_height': '천장 높이(m)',
@@ -30,12 +84,7 @@ class EventForm(forms.ModelForm):
         }
         
         widgets = {
-            'title': forms.TextInput(attrs={'class': 'form-input', 'style': 'width: 100%;'}),
-            'date': forms.DateInput(attrs={'class': 'form-input', 'type': 'date'}),
-            'event_type': forms.Select(attrs={'class': 'form-input'}),
-            'seating_type': forms.Select(attrs={'class': 'form-input'}), # [신규]
-            
-            # 숫자 입력칸 스타일 (대표님 설정 유지)
+            'seating_type': forms.Select(attrs={'class': 'form-input'}),
             'venue_width': forms.NumberInput(attrs={'class': 'form-input', 'step': '0.1'}),
             'venue_depth': forms.NumberInput(attrs={'class': 'form-input', 'step': '0.1'}),
             'venue_height': forms.NumberInput(attrs={'class': 'form-input', 'step': '0.1'}),
@@ -45,7 +94,9 @@ class EventForm(forms.ModelForm):
             'table_gap': forms.NumberInput(attrs={'class': 'form-input', 'step': '0.1'}),
         }
 
-# 2. [큐시트 입력용] 입력창 (대표님 스타일 100% 유지)
+# ========================================================
+# 4. 큐시트 폼 (기존 유지)
+# ========================================================
 class CueForm(forms.ModelForm):
     class Meta:
         model = Cue
@@ -61,7 +112,9 @@ class CueForm(forms.ModelForm):
             'action': forms.TextInput(attrs={'class': 'form-input', 'style': 'width: 60px;'}),
         }
 
-# 3. [신규] 일정 추가용 폼 (새로 추가된 부분)
+# ========================================================
+# 5. 일정 폼 (기존 유지)
+# ========================================================
 class TaskForm(forms.ModelForm):
     class Meta:
         model = Task
