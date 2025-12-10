@@ -11,7 +11,7 @@ class Event(models.Model):
     date = models.DateField(verbose_name="행사일")
     created_at = models.DateTimeField(auto_now_add=True)
 
-    # [1] 행사 성격 (5가지로 복구됨)
+    # [1] 행사 성격 (5가지)
     TYPE_CHOICES = [
         ('general', '일반 행사 (General)'),
         ('conference', '컨퍼런스/세미나 (Conference)'),
@@ -19,7 +19,6 @@ class Event(models.Model):
         ('exhibition', '전시회 (Exhibition)'),
         ('festival', '축제/이벤트 (Festival)'),
     ]
-    # [수정 포인트 1] default를 'speech'에서 'general'로 변경!
     event_type = models.CharField(max_length=20, choices=TYPE_CHOICES, default='general', verbose_name="행사 유형")
 
     # [2] 공간 데이터 (Venue)
@@ -35,6 +34,16 @@ class Event(models.Model):
 
     # [4] 세부 설계 옵션
     table_gap = models.FloatField(default=3.0, verbose_name="객석 간격(m)")
+    
+    # ▼▼▼ [신규 추가] 객석 배치 타입 (업그레이드 #1) ▼▼▼
+    SEATING_CHOICES = [
+        ('banquet', '연회식 (Round Table)'),
+        ('theater', '극장식 (Theater / Chairs only)'),
+        ('classroom', '강의식 (Classroom / Table & Chair)'),
+    ]
+    seating_type = models.CharField(max_length=20, choices=SEATING_CHOICES, default='banquet', verbose_name="객석 배치 유형")
+    # ▲▲▲ 추가 끝 ▲▲▲
+
     has_virgin_road = models.BooleanField(default=False, verbose_name="버진로드 포함")
     has_foh = models.BooleanField(default=True, verbose_name="FOH(콘솔) 배치")
 
@@ -81,7 +90,7 @@ def create_default_tasks(sender, instance, created, **kwargs):
         tasks.append(Task(event=instance, content="Kick-off 및 현장 답사", deadline=d_day - timedelta(days=30)))
         tasks.append(Task(event=instance, content="도면 및 3D 시안 확정", deadline=d_day - timedelta(days=14)))
         
-        # [수정 포인트 2] 'concert' 또는 'festival'일 때 공연 업무 생성
+        # 공연/세미나 특화
         if instance.event_type in ['concert', 'festival']:
             tasks.append(Task(event=instance, content="큐시트 & 리허설 계획 수립", deadline=d_day - timedelta(days=7)))
             tasks.append(Task(event=instance, content="음원/영상 소스 최종 확인", deadline=d_day - timedelta(days=3)))

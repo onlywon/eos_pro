@@ -1,11 +1,11 @@
 from django.shortcuts import render, get_object_or_404, redirect
 from django.http import HttpResponse
-from .models import Event
-from .forms import CueForm, EventForm
-from django.contrib.auth.forms import UserCreationForm # 회원가입 폼
-from django.contrib.auth import login # 가입 후 즉시 로그인
+from .models import Event, Task # [수정] Task 모델 추가
+from .forms import CueForm, EventForm, TaskForm # [수정] TaskForm 추가
+from django.contrib.auth.forms import UserCreationForm 
+from django.contrib.auth import login 
 
-# [수정] 도면 그리는 함수들(draw_...) 추가 임포트
+# [수정] 도면 그리는 함수들
 from .calculators import calculate_space, calculate_audio, LightingEngine, draw_space, draw_audio, draw_light
 import pandas as pd
 import urllib.parse
@@ -35,13 +35,14 @@ def event_create(request):
         
     return render(request, 'main/event_form.html', {'form': form})
 
-# 3. 상세 페이지 (솔루션 모드) - 최종 버전
+# 3. 상세 페이지 (솔루션 모드) - 업그레이드 버전
 def detail(request, event_id):
     event = get_object_or_404(Event, pk=event_id)
     
-    # 폼 초기화 (에러 방지용)
+    # 폼 초기화
     cue_form = CueForm()
     event_form = EventForm(instance=event)
+    task_form = TaskForm() # [신규] 할 일 추가 폼 생성
 
     # POST 요청 처리
     if request.method == 'POST':
@@ -61,6 +62,21 @@ def detail(request, event_id):
                 event_form.save()
                 return redirect('detail', event_id=event.id)
 
+        # [C] 할 일(Task) 추가 (신규 기능)
+        elif 'add_task' in request.POST:
+            task_form = TaskForm(request.POST)
+            if task_form.is_valid():
+                task = task_form.save(commit=False)
+                task.event = event
+                task.save()
+                return redirect('detail', event_id=event.id)
+
+        # [D] 할 일(Task) 삭제 (신규 기능)
+        elif 'delete_task' in request.POST:
+            task_id = request.POST.get('task_id')
+            Task.objects.filter(id=task_id).delete()
+            return redirect('detail', event_id=event.id)
+
     # 데이터 가져오기
     tasks = event.tasks.all().order_by('deadline')
     cues = event.cue_set.all().order_by('order')
@@ -71,17 +87,17 @@ def detail(request, event_id):
     
     # 1. 공간 분석 & 도면 그리기
     space_report = calculate_space(event)
-    graph_space = draw_space(event) # <--- [추가] 공간 도면 생성
+    graph_space = draw_space(event)
     
     # 2. 음향 분석 & 도면 그리기
     audio_report = calculate_audio(event)
-    graph_audio = draw_audio(event, audio_report['specs']) # <--- [추가] 음향 도면 생성
+    graph_audio = draw_audio(event, audio_report['specs'])
     
     # 3. 조명 분석 & 도면 그리기
     l_engine = LightingEngine(event)
-    # [주의] calculators.py를 수정했으므로 이제 3개 값을 리턴합니다 (패치, 전력, 레이아웃)
-    light_patch, light_power, light_layout = l_engine.get_patch_data() 
-    graph_light = draw_light(event, light_layout) # <--- [추가] 조명 도면 생성
+    # [수정] calculators.py 업데이트로 반환값이 4개가 되었습니다 (gen_info 추가)
+    light_patch, light_power, light_layout, gen_info = l_engine.get_patch_data() 
+    graph_light = draw_light(event, light_layout)
     
     return render(request, 'main/detail.html', {
         'event': event, 
@@ -89,11 +105,13 @@ def detail(request, event_id):
         'cues': cues, 
         'form': cue_form, 
         'event_form': event_form,
+        'task_form': task_form, # [신규] 템플릿 전달
         # 수치 리포트
         'space': space_report,
         'audio': audio_report,
         'light_patch': light_patch,
         'light_power': light_power,
+        'gen_info': gen_info,   # [신규] 발전차 정보 전달
         # 도면 이미지 (Base64 코드)
         'graph_space': graph_space,
         'graph_audio': graph_audio,

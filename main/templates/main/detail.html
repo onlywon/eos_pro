@@ -43,6 +43,10 @@
         .form-input { background: #333; border: 1px solid #444; color: white; padding: 10px; border-radius: 4px; width: 100%; box-sizing: border-box; }
         .btn-save { background: #007acc; color: white; border: none; padding: 12px; border-radius: 4px; cursor: pointer; font-weight: bold; width: 100%; margin-top: 10px; }
         
+        /* [삭제 버튼 스타일 추가] */
+        .btn-del { background: #ff4b4b; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; }
+        .btn-del:hover { background: #cc0000; }
+
         /* [테이블] */
         table { width: 100%; border-collapse: collapse; font-size: 14px; }
         th { text-align: left; padding: 12px; border-bottom: 2px solid #444; color: #aaa; background: #2a2a2a; }
@@ -106,10 +110,14 @@
 
                         <label style="color:#007acc; margin-top:20px;">⚙️ 옵션</label>
                         <div class="grid-3">
+                            <div style="grid-column: span 2;"><label>객석 배치 타입</label>{{ event_form.seating_type }}</div>
                             <div><label>객석간격</label>{{ event_form.table_gap }}</div>
-                            <div style="padding-top:20px;">{{ event_form.has_virgin_road }} 버진로드</div>
-                            <div style="padding-top:20px;">{{ event_form.has_foh }} FOH</div>
                         </div>
+                        <div class="grid-3" style="margin-top:10px;">
+                            <div>{{ event_form.has_virgin_road }} 버진로드</div>
+                            <div>{{ event_form.has_foh }} FOH</div>
+                        </div>
+                        
                         <button type="submit" class="btn-save">설계 시뮬레이션 (저장)</button>
                     </form>
                 </div>
@@ -127,11 +135,14 @@
                             <span class="text-safe" style="font-weight:bold;">{{ space.pax }} 명</span>
                         </div>
                         <div style="display:flex; justify-content:space-between;">
-                            <span>테이블 수량</span>
-                            <span style="color:white;">{{ space.table_count }} Set</span>
+                            <span>배치 수량</span>
+                            <span style="color:white;">{{ space.table_count }} Unit</span>
                         </div>
                     </div>
                     <div style="margin-top:15px;">
+                        {% for info in space.infos %}
+                            <div style="color:#aaa; font-size:13px;">{{ info }}</div>
+                        {% endfor %}
                         {% for warn in space.warnings %}
                             <div class="text-warn" style="font-size:13px;">⚠️ {{ warn }}</div>
                         {% endfor %}
@@ -144,11 +155,9 @@
             <div class="grid-2">
                 <div class="box">
                     <div class="section-title">🔊 음향 커버리지 (Audio)</div>
-                    
                     {% if graph_audio %}
                         <img src="data:image/png;base64,{{ graph_audio }}" class="graph-img">
                     {% endif %}
-
                     <div style="background:#333; padding:10px; border-radius:5px; margin-bottom:10px;">
                         <strong style="color:#00ff00;">{{ audio.type }}</strong>
                     </div>
@@ -161,13 +170,16 @@
                 </div>
 
                 <div class="box">
-                    <div class="section-title">💡 조명 배치도 (Lighting)</div>
-                    
+                    <div class="section-title">💡 조명 & 전력 (Lighting)</div>
                     {% if graph_light %}
                         <img src="data:image/png;base64,{{ graph_light }}" class="graph-img">
                     {% endif %}
 
-                    <div style="max-height: 300px; overflow-y: auto;">
+                    <div style="background:#444; color:#fff; padding:10px; border-radius:5px; margin-bottom:10px; text-align:center; font-weight:bold;">
+                        {{ gen_info }}
+                    </div>
+
+                    <div style="max-height: 250px; overflow-y: auto;">
                         <table>
                             <thead><tr><th>ID</th><th>Fixture</th><th>Addr</th><th>Watt</th></tr></thead>
                             <tbody>
@@ -190,23 +202,48 @@
         </div>
 
         <div id="step3" class="tab-content">
-            <div class="box">
-                <div class="section-title">📅 프로젝트 일정</div>
-                <table>
-                    <thead><tr><th>마감일</th><th>D-Day</th><th>내용</th><th>상태</th></tr></thead>
-                    <tbody>
-                        {% for task in tasks %}
-                        <tr>
-                            <td>{{ task.deadline|date:"Y-m-d" }}</td>
-                            <td class="text-warn">{{ task.deadline|timeuntil }}</td>
-                            <td>{{ task.content }}</td>
-                            <td>{% if task.is_done %}<span class="text-safe">완료</span>{% else %}<span>미완료</span>{% endif %}</td>
-                        </tr>
-                        {% empty %}
-                        <tr><td colspan="4" style="text-align:center; padding:20px;">일정 없음</td></tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+            <div class="grid-2">
+                <div class="box">
+                    <div class="section-title">📅 프로젝트 일정</div>
+                    <table>
+                        <thead><tr><th>마감일</th><th>D-Day</th><th>내용</th><th>관리</th></tr></thead>
+                        <tbody>
+                            {% for task in tasks %}
+                            <tr>
+                                <td>{{ task.deadline|date:"Y-m-d" }}</td>
+                                <td class="text-warn">{{ task.deadline|timeuntil }}</td>
+                                <td>{{ task.content }}</td>
+                                <td>
+                                    <form method="post" style="display:inline;">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="delete_task" value="true">
+                                        <input type="hidden" name="task_id" value="{{ task.id }}">
+                                        <button type="submit" class="btn-del">삭제</button>
+                                    </form>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr><td colspan="4" style="text-align:center; padding:20px;">등록된 일정이 없습니다.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="box" style="height: fit-content;">
+                    <div class="section-title">➕ 일정 추가하기</div>
+                    <form method="post">
+                        {% csrf_token %}
+                        <input type="hidden" name="add_task" value="true">
+                        
+                        <label>할 일 내용</label>
+                        {{ task_form.content }}
+                        
+                        <label style="margin-top:15px;">마감일</label>
+                        {{ task_form.deadline }}
+                        
+                        <button type="submit" class="btn-save">일정 등록</button>
+                    </form>
+                </div>
             </div>
         </div>
 
