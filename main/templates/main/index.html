@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>EOS PRO</title>
+    <style>
+        body { background-color: #1e1e1e; color: white; text-align: center; margin-top: 50px; font-family: sans-serif; }
+        h1 { font-size: 60px; color: #00ff00; margin-bottom: 10px; }
+        p { font-size: 20px; color: #cccccc; }
+        .btn { padding: 10px 20px; border-radius: 5px; font-weight: bold; text-decoration: none; display: inline-block; margin: 5px; cursor: pointer; border: none;}
+        .btn-login { background-color: #007acc; color: white; }
+        .btn-logout { background-color: #555; color: white; font-size: 14px;}
+        .welcome-box { background-color: #333; padding: 30px; display: inline-block; border-radius: 10px; width: 80%; max-width: 600px; }
+        .event-card { background-color: #2a2a2a; padding: 15px; margin-bottom: 10px; border-radius: 8px; border-left: 5px solid #00ff00; text-align: left; display: flex; justify-content: space-between; align-items: center; }
+        .event-link { color: #007acc; text-decoration: none; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <h1>🚀 EOS PRO</h1>
+    <p>Event Operation System for Professionals</p>
+
+    <div class="welcome-box">
+        {% if user.is_authenticated %}
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h2 style="margin: 0;">👋 환영합니다, <span style="color:#00ff00;">{{ user.username }}</span>님!</h2>
+                <form action="{% url 'logout' %}" method="post" style="display:inline;">{% csrf_token %}<button class="btn btn-logout">로그아웃</button></form>
+            </div>
+            <hr style="border-color: #444; margin-bottom: 20px;">
+
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <h3 style="margin: 0;">📂 내 행사 목록</h3>
+                <a href="{% url 'event_create' %}" style="background-color: #00ff00; color: black; padding: 8px 15px; text-decoration: none; font-weight: bold; border-radius: 5px; font-size: 14px;">+ 새 프로젝트 추가</a>
+            </div>
+
+            {% if events %}
+                {% for event in events %}
+                    <div class="event-card">
+                        <div>
+                            <strong style="font-size: 18px; display: block;">{{ event.title }}</strong>
+                            <span style="color: #888; font-size: 14px;">{{ event.date }} | {{ event.get_event_type_display }}</span>
+                        </div>
+                        <a href="{% url 'detail' event.id %}" class="event-link">프로젝트 열기 ></a>
+                    </div>
+                {% endfor %}
+            {% else %}
+                <p style="color: #666; margin-top: 30px;">등록된 행사가 없습니다.<br>위의 버튼을 눌러보세요!</p>
+            {% endif %}
+        {% else %}
+            <br><p>서비스를 이용하려면 로그인이 필요합니다.</p><br>
+            <a href="{% url 'login' %}" class="btn btn-login">🔒 로그인 하러 가기</a>
+        {% endif %}
+    </div>
+</body>
+</html>

@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>로그인 - EOS PRO</title>
+    <style>
+        body { background-color: #1e1e1e; color: white; font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .card { background-color: #252526; padding: 40px; border-radius: 10px; width: 100%; max-width: 400px; text-align: center; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
+        h2 { color: #00ff00; margin-bottom: 30px; }
+        input { width: 100%; padding: 12px; margin-bottom: 15px; background: #333; border: 1px solid #444; color: white; border-radius: 5px; box-sizing: border-box; }
+        button { width: 100%; padding: 12px; background: #007acc; color: white; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; font-size: 16px; }
+        button:hover { background: #005a9e; }
+        .links { margin-top: 20px; font-size: 14px; }
+        a { color: #aaa; text-decoration: none; }
+        a:hover { color: white; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h2>🔒 EOS PRO 로그인</h2>
+        <form method="post">
+            {% csrf_token %}
+            {{ form.as_p }}
+            <button type="submit">로그인</button>
+        </form>
+        <div class="links">
+            아직 계정이 없으신가요? <a href="{% url 'signup' %}" style="color:#00ff00;">회원가입 하기</a>
+        </div>
+    </div>
+</body>
+</html>

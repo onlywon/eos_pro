@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>새 프로젝트 - EOS PRO</title>
+    <style>
+        body { background-color: #1e1e1e; color: white; font-family: 'Suit', sans-serif; padding: 30px; }
+        .container { max-width: 700px; margin: 0 auto; background-color: #252526; padding: 40px; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
+        
+        h2 { text-align: center; color: #00ff00; margin-top: 0; margin-bottom: 30px; }
+        
+        /* 섹션 구분선 */
+        .section-title { color: #007acc; font-size: 18px; font-weight: bold; border-bottom: 2px solid #333; padding-bottom: 10px; margin-top: 30px; margin-bottom: 15px; }
+        
+        /* 그리드 레이아웃 */
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; }
+        
+        /* 입력 스타일 */
+        label { color: #aaa; display: block; margin-bottom: 5px; font-size: 14px; }
+        .form-input { width: 100%; padding: 10px; background: #333; border: 1px solid #444; color: white; border-radius: 5px; box-sizing: border-box; }
+        .form-input:focus { border-color: #00ff00; outline: none; }
+        
+        /* 버튼 */
+        .btn-save { width: 100%; padding: 15px; background: #00ff00; color: black; border: none; font-weight: bold; font-size: 18px; cursor: pointer; border-radius: 5px; margin-top: 40px; transition: 0.3s; }
+        .btn-save:hover { background: #00cc00; }
+        
+        .error-msg { color: #ff4b4b; background: #330000; padding: 10px; border-radius: 5px; margin-bottom: 20px; text-align: center;}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>🚀 New Project</h2>
+        
+        <form method="post">
+            {% csrf_token %}
+            
+            {% if form.errors %}
+                <div class="error-msg">
+                    ⚠️ 입력 정보를 확인해주세요.<br>
+                    <span style="font-size:12px;">{{ form.errors }}</span>
+                </div>
+            {% endif %}
+
+            <label>프로젝트 명</label> {{ form.title }}
+            <div class="grid-2" style="margin-top: 15px;">
+                <div><label>행사 날짜</label> {{ form.date }}</div>
+                <div><label>행사 종류</label> {{ form.event_type }}</div>
+            </div>
+            
+            <div class="section-title">🏗️ 장소 정보 (Venue Spec)</div>
+            <div class="grid-3">
+                <div><label>공간 가로(m)</label>{{ form.venue_width }}</div>
+                <div><label>공간 깊이(m)</label>{{ form.venue_depth }}</div>
+                <div><label>천장 높이(m)</label>{{ form.venue_height }}</div>
+            </div>
+
+            <div class="section-title">🎪 무대 정보 (Stage Spec)</div>
+            <div class="grid-3">
+                <div><label>무대 가로(m)</label>{{ form.stage_width }}</div>
+                <div><label>무대 깊이(m)</label>{{ form.stage_depth }}</div>
+                <div><label>무대 높이(m)</label>{{ form.stage_height }}</div>
+            </div>
+
+            <div class="section-title">⚙️ 세부 옵션</div>
+            <div class="grid-3">
+                <div><label>객석 간격(m)</label>{{ form.table_gap }}</div>
+                <div style="padding-top: 20px;">{{ form.has_virgin_road }} 버진로드 포함</div>
+                <div style="padding-top: 20px;">{{ form.has_foh }} FOH 배치</div>
+            </div>
+
+            <div class="section-title">✅ 필요 장비 (Scope)</div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px;">
+                <div>{{ form.has_stage }} 무대 하드웨어</div>
+                <div>{{ form.has_sound }} 음향 시스템</div>
+                <div>{{ form.has_lighting }} 조명 시스템</div>
+                <div>{{ form.has_screen }} 영상/중계</div>
+                <div>{{ form.has_booth }} 전시 부스</div>
+                <div>{{ form.has_print }} 인쇄/홍보물</div>
+            </div>
+
+            <button type="submit" class="btn-save">프로젝트 생성 완료</button>
+        </form>
+        
+        <br>
+        <div style="text-align: center;">
+            <a href="{% url 'index' %}" style="color: #888; text-decoration: none;">← 취소하고 돌아가기</a>
+        </div>
+    </div>
+</body>
+</html>
