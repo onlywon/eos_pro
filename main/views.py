@@ -86,7 +86,7 @@ def detail(request, event_id):
                 return redirect('detail', event_id=event.id)
 
     # ==========================================
-    # 📊 대시보드 데이터 계산 [업그레이드 완료]
+    # 📊 대시보드 데이터 계산 [안정화 로직 적용]
     # ==========================================
     
     # 1. D-Day 계산
@@ -101,15 +101,20 @@ def detail(request, event_id):
     else:
         progress = 0
         
-    # 3. 재무 계산 (콤마 포맷팅 & 수익률 추가)
-    budget = event.budget
-    cost = event.expected_cost
+    # 3. 재무 계산 (안정화)
+    # NoneType 에러 방지를 위해 숫자형 필드에 기본값 (0) 적용
+    budget = event.budget if event.budget is not None else 0
+    cost = event.expected_cost if event.expected_cost is not None else 0
+    
     profit = budget - cost
     
-    # 수익률(%) 계산 (0으로 나누기 방지)
-    if budget > 0:
-        profit_rate = round((profit / budget) * 100, 1)
-    else:
+    # 수익률(%) 계산 (ZeroDivisionError 및 TypeError 방지 로직 강화)
+    try:
+        if budget > 0:
+            profit_rate = round((profit / budget) * 100, 1)
+        else:
+            profit_rate = 0.0
+    except (TypeError, ZeroDivisionError):
         profit_rate = 0.0
 
     # 천단위 콤마(,) 찍기 (문자열로 변환)
