@@ -18,7 +18,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-v4-&y$q67lbhz-0kb1pbq8#03c%v3@v^4=e)5^%uc%$c6(*ks!'
 
 # [수정 1] 보안을 위해 디버그 모드 끄기 (배포 시 필수!)
-DEBUG = False
+# **주의: 현재 개발 단계에서는 True로 바꾸는 것이 오류 추적에 유리합니다.**
+DEBUG = False 
 
 # [수정 2] 모든 도메인 접속 허용 (PythonAnywhere 접속용)
 ALLOWED_HOSTS = ['*']
@@ -35,6 +36,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'main',
     'common',
+    'django.contrib.humanize',  # <--- [필수 수정] intcomma 필터 사용을 위해 추가
 ]
 
 MIDDLEWARE = [

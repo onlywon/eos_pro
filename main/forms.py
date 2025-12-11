@@ -1,13 +1,26 @@
 from django import forms
-from .models import Cue, Event, Task
+from .models import Cue, Event, Task, Vendor, Quotation, PurchaseOrder 
+
+# 💡 [필수 수정] models.py에서 변경된 상수 이름으로 임포트
+from .models import (
+    TYPE_CHOICES_EVENT, STATUS_CHOICES, SEATING_CHOICES, 
+    PHASE_CHOICES, PO_CHOICES, TYPE_CHOICES_TASK, PRIORITY_CHOICES # Task 확장 필드 상수 추가
+)
+
 
 # ========================================================
-# 1. [초기 생성용] 프로젝트 생성 폼 (Create)
+# 1. [초기 생성용] 프로젝트 생성 폼 (Create) 
 # ========================================================
 class EventForm(forms.ModelForm):
+    # event_type 필드를 명시적으로 models.TYPE_CHOICES_EVENT를 사용하여 정의
+    event_type = forms.ChoiceField(
+        choices=TYPE_CHOICES_EVENT,
+        label='행사 종류',
+        widget=forms.Select(attrs={'class': 'form-input'})
+    )
+    
     class Meta:
         model = Event
-        # 생성 시점에는 핵심 정보만 입력받습니다.
         fields = ['title', 'client_name', 'venue_name', 'budget', 'date', 'event_type']
         
         labels = {
@@ -16,7 +29,6 @@ class EventForm(forms.ModelForm):
             'venue_name': '장소명',
             'budget': '총 예산(원)',
             'date': '행사 날짜',
-            'event_type': '행사 종류',
         }
         
         widgets = {
@@ -25,16 +37,21 @@ class EventForm(forms.ModelForm):
             'venue_name': forms.TextInput(attrs={'class': 'form-input', 'placeholder': '예: 코엑스 그랜드볼룸'}),
             'budget': forms.NumberInput(attrs={'class': 'form-input', 'placeholder': '숫자만 입력'}),
             'date': forms.DateInput(attrs={'class': 'form-input', 'type': 'date'}),
-            'event_type': forms.Select(attrs={'class': 'form-input'}),
         }
 
 # ========================================================
-# 2. [Tab 1용] 개요 및 재무 관리 폼 (Dashboard) - 신규
+# 2. [Tab 1용] 개요 및 재무 관리 폼 (Dashboard) 
 # ========================================================
 class EventOverviewForm(forms.ModelForm):
+    # status 필드를 명시적으로 models.STATUS_CHOICES를 사용하여 정의
+    status = forms.ChoiceField(
+        choices=STATUS_CHOICES,
+        label='진행 상태',
+        widget=forms.Select(attrs={'class': 'form-input', 'style': 'font-weight:bold; color:#00ff00;'})
+    )
+    
     class Meta:
         model = Event
-        # 상황실에서 수정할 정보들 (진행상태, 비용 포함)
         fields = ['title', 'client_name', 'venue_name', 'date', 'status', 'budget', 'expected_cost']
         
         labels = {
@@ -42,9 +59,8 @@ class EventOverviewForm(forms.ModelForm):
             'client_name': '클라이언트',
             'venue_name': '장소명',
             'date': '행사 날짜',
-            'status': '진행 상태',       # [New]
             'budget': '매출 (총 예산)',
-            'expected_cost': '예상 지출', # [New]
+            'expected_cost': '예상 지출', 
         }
         
         widgets = {
@@ -52,19 +68,23 @@ class EventOverviewForm(forms.ModelForm):
             'client_name': forms.TextInput(attrs={'class': 'form-input'}),
             'venue_name': forms.TextInput(attrs={'class': 'form-input'}),
             'date': forms.DateInput(attrs={'class': 'form-input', 'type': 'date'}),
-            # 상태 변경은 눈에 띄게 스타일링
-            'status': forms.Select(attrs={'class': 'form-input', 'style': 'font-weight:bold; color:#00ff00;'}),
             'budget': forms.NumberInput(attrs={'class': 'form-input'}),
             'expected_cost': forms.NumberInput(attrs={'class': 'form-input', 'placeholder': '지출 예상액 입력'}),
         }
 
 # ========================================================
-# 3. [Tab 2용] 공간 설계 폼 (Space Design) - 분리됨
+# 3. [Tab 2용] 공간 설계 폼 (Space Design) 
 # ========================================================
 class EventSpaceForm(forms.ModelForm):
+    # seating_type 필드를 명시적으로 models.SEATING_CHOICES를 사용하여 정의
+    seating_type = forms.ChoiceField(
+        choices=SEATING_CHOICES,
+        label='객석 배치',
+        widget=forms.Select(attrs={'class': 'form-input'})
+    )
+    
     class Meta:
         model = Event
-        # 공간/무대/객석 관련 필드만 모음
         fields = [
             'venue_width', 'venue_depth', 'venue_height', 
             'has_stage', 'stage_width', 'stage_depth', 'stage_height',
@@ -113,13 +133,79 @@ class CueForm(forms.ModelForm):
         }
 
 # ========================================================
-# 5. 일정 폼 (기존 유지)
+# 5. 일정 폼 (E.O.S 및 PMS+ 기능 반영하여 확장)
 # ========================================================
 class TaskForm(forms.ModelForm):
+    # 💡 [필수 수정] task_category -> PHASE_CHOICES 사용
+    task_category = forms.ChoiceField(
+        choices=PHASE_CHOICES, 
+        label='Task 단계',
+        widget=forms.Select(attrs={'class': 'form-input'})
+    )
+    # 💡 [신규] task_type 필드 추가
+    task_type = forms.ChoiceField(
+        choices=TYPE_CHOICES_TASK,
+        label='Task 유형',
+        widget=forms.Select(attrs={'class': 'form-input'})
+    )
+    # 💡 [신규] priority 필드 추가
+    priority = forms.ChoiceField(
+        choices=PRIORITY_CHOICES,
+        label='우선순위',
+        widget=forms.Select(attrs={'class': 'form-input'})
+    )
+    # po_status 필드를 명시적으로 models.PO_CHOICES를 사용하여 정의
+    po_status = forms.ChoiceField(
+        choices=PO_CHOICES,
+        label='조달 상태',
+        widget=forms.Select(attrs={'class': 'form-input'})
+    )
+    
     class Meta:
         model = Task
-        fields = ['content', 'deadline']
+        # 확장된 Task 모델의 필드를 모두 포함합니다.
+        fields = [
+            'content', 'deadline', 'task_category', 'task_type', 'priority', # 신규 필드 추가
+            'is_external', 
+            'planned_budget', 'actual_cost', 'vendor', 'po_status'
+        ]
+        
         widgets = {
-            'content': forms.TextInput(attrs={'class': 'form-input', 'placeholder': '추가할 업무 내용', 'style': 'width: 70%;'}),
+            'content': forms.TextInput(attrs={'class': 'form-input', 'placeholder': '업무 내용', 'style': 'width: 100%;'}),
             'deadline': forms.DateInput(attrs={'class': 'form-input', 'type': 'date'}),
+            'is_external': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'planned_budget': forms.NumberInput(attrs={'class': 'form-input', 'placeholder': '책정 예산 (원)'}),
+            'actual_cost': forms.NumberInput(attrs={'class': 'form-input', 'placeholder': '실 지출 (원)'}),
+            'vendor': forms.Select(attrs={'class': 'form-input'}), # 협력업체 목록 자동 로딩
         }
+        
+        labels = {
+            'content': '업무 내용',
+            'deadline': '마감일',
+            'task_category': 'Task 단계',
+            'task_type': 'Task 유형',
+            'priority': '우선순위',
+            'is_external': '외주 업무',
+            'planned_budget': '책정 예산',
+            'actual_cost': '실 지출',
+            'vendor': '담당 업체',
+            'po_status': '조달 상태',
+        }
+
+
+# ========================================================
+# 6. 신규 폼: 외주 관리 시스템용 폼 추가
+# ========================================================
+
+# A. 협력업체 등록 폼
+class VendorForm(forms.ModelForm):
+    class Meta:
+        model = Vendor
+        fields = '__all__'
+
+# B. 견적서 등록 폼
+class QuotationForm(forms.ModelForm):
+    class Meta:
+        model = Quotation
+        # task는 views에서 context로 받아서 처리
+        fields = ['vendor', 'quoted_amount', 'file']

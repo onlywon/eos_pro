@@ -1,135 +1,124 @@
-from django.shortcuts import render, get_object_or_404, redirect
+from django.shortcuts import render, get_object_or_404, redirect, resolve_url
 from django.http import HttpResponse
-from .models import Event, Task
-# [수정] 분리된 폼들(Overview, Space) 추가 임포트
+from .models import Event, Task, Vendor, Quotation, PurchaseOrder
 from .forms import CueForm, EventForm, TaskForm, EventOverviewForm, EventSpaceForm
 from django.contrib.auth.forms import UserCreationForm 
 from django.contrib.auth import login 
 from .calculators import calculate_space, calculate_audio, LightingEngine, draw_space, draw_audio, draw_light
+from django.contrib.auth.decorators import login_required
+from django.db.models import Sum, Case, When, Value, IntegerField
 import pandas as pd
 import urllib.parse
-from datetime import date # [신규] D-Day 계산용
+from datetime import date 
 
 # 1. 메인 대시보드
+@login_required
 def index(request):
-    if request.user.is_authenticated:
-        events = Event.objects.filter(author=request.user).order_by('-created_at')
-        return render(request, 'main/index.html', {'events': events})
-    else:
-        return render(request, 'main/index.html')
+    events = Event.objects.filter(author=request.user).order_by('-created_at')
+    return render(request, 'main/index.html', {'events': events})
 
-# 2. 새 프로젝트 생성 (기본 EventForm 사용)
+# 2. 새 프로젝트 생성
+@login_required
 def event_create(request):
-    if not request.user.is_authenticated:
-        return redirect('login')
-
     if request.method == 'POST':
         form = EventForm(request.POST)
         if form.is_valid():
             event = form.save(commit=False)
             event.author = request.user
             event.save()
-            return redirect('detail', event_id=event.id) # 생성 후 바로 상세 페이지로 이동
+            return redirect('detail', event_id=event.id)
     else:
         form = EventForm()
-        
     return render(request, 'main/event_form.html', {'form': form})
 
 # 3. 상세 페이지 (통합 상황실 & 솔루션 모드)
+@login_required
 def detail(request, event_id):
     event = get_object_or_404(Event, pk=event_id)
     
-    # === [폼 초기화: 탭별로 분리] ===
+    if event.author != request.user:
+        return HttpResponse("이 프로젝트를 볼 권한이 없습니다.", status=403)
+    
     overview_form = EventOverviewForm(instance=event)
     space_form = EventSpaceForm(instance=event)
     cue_form = CueForm()
-    task_form = TaskForm()
+    task_form = TaskForm() 
 
-    # === [POST 요청 처리] ===
     if request.method == 'POST':
-        # [Tab 1] 개요 & 재무 정보 수정
+        # [Tab 1] 개요 저장 -> #tab1 유지
         if 'update_overview' in request.POST:
             overview_form = EventOverviewForm(request.POST, instance=event)
             if overview_form.is_valid():
                 overview_form.save()
-                return redirect('detail', event_id=event.id)
+                return redirect(resolve_url('detail', event_id=event.id) + '#tab1')
         
-        # [Tab 2] 공간 설계 수정
+        # [Tab 2] 공간 설계 저장 -> #tab2 유지
         elif 'update_space' in request.POST:
             space_form = EventSpaceForm(request.POST, instance=event)
             if space_form.is_valid():
                 space_form.save()
-                return redirect('detail', event_id=event.id)
+                return redirect(resolve_url('detail', event_id=event.id) + '#tab2')
 
-        # [Tab 4] 할 일 추가
-        elif 'add_task' in request.POST:
-            task_form = TaskForm(request.POST)
-            if task_form.is_valid():
-                task = task_form.save(commit=False)
-                task.event = event
-                task.save()
-                return redirect('detail', event_id=event.id)
-
-        # [Tab 4] 할 일 삭제
-        elif 'delete_task' in request.POST:
-            task_id = request.POST.get('task_id')
-            Task.objects.filter(id=task_id).delete()
-            return redirect('detail', event_id=event.id)
-
-        # [Tab 5] 큐시트 저장
+        # [Tab 5] 큐시트 저장 -> #tab5 유지
         elif 'save_cue' in request.POST:
             cue_form = CueForm(request.POST)
             if cue_form.is_valid():
                 cue = cue_form.save(commit=False)
                 cue.event = event
                 cue.save()
-                return redirect('detail', event_id=event.id)
+                return redirect(resolve_url('detail', event_id=event.id) + '#tab5')
 
-    # ==========================================
-    # 📊 대시보드 데이터 계산 [안정화 로직 적용]
-    # ==========================================
-    
-    # 1. D-Day 계산
+    # --- 대시보드 계산 로직 ---
     today = date.today()
     d_day = (event.date - today).days
     
-    # 2. 진척률 (Progress)
     total_tasks = event.tasks.count()
     done_tasks = event.tasks.filter(is_done=True).count()
-    if total_tasks > 0:
-        progress = int((done_tasks / total_tasks) * 100)
-    else:
-        progress = 0
+    progress = int((done_tasks / total_tasks) * 100) if total_tasks > 0 else 0
         
-    # 3. 재무 계산 (안정화)
-    # NoneType 에러 방지를 위해 숫자형 필드에 기본값 (0) 적용
+    total_task_budget = event.tasks.aggregate(total=Sum('planned_budget'))['total'] or 0
     budget = event.budget if event.budget is not None else 0
-    cost = event.expected_cost if event.expected_cost is not None else 0
-    
+    cost = total_task_budget 
     profit = budget - cost
     
-    # 수익률(%) 계산 (ZeroDivisionError 및 TypeError 방지 로직 강화)
     try:
-        if budget > 0:
-            profit_rate = round((profit / budget) * 100, 1)
-        else:
-            profit_rate = 0.0
+        profit_rate = round((profit / budget) * 100, 1) if budget > 0 else 0.0
     except (TypeError, ZeroDivisionError):
         profit_rate = 0.0
 
-    # 천단위 콤마(,) 찍기 (문자열로 변환)
     fmt_budget = f"{budget:,}"
     fmt_cost = f"{cost:,}"
     fmt_profit = f"{profit:,}"
 
-    # === [데이터 가져오기] ===
-    tasks = event.tasks.all().order_by('deadline')
+    # === [데이터 가져오기: 정렬 로직 강화 (구버전 호환)] ===
+    # 💡 과거 데이터(소문자)와 신규 데이터(대문자)를 모두 같은 순위로 묶어줍니다.
+    
+    phase_ordering = Case(
+        # 1. 기획 (PLANNING, planning, admin) -> 0순위
+        When(task_category__in=['PLANNING', 'planning', 'admin'], then=Value(0)),
+        
+        # 2. 디자인 (DESIGN, design) -> 1순위
+        When(task_category__in=['DESIGN', 'design'], then=Value(1)),
+        
+        # 3. 제작/준비 (PREPARATION) -> 2순위
+        When(task_category__in=['PREPARATION', 'preparation'], then=Value(2)),
+        
+        # 4. 실행/현장 (EXECUTION, execution) -> 3순위
+        When(task_category__in=['EXECUTION', 'execution'], then=Value(3)),
+        
+        # 5. 정산/마감 (CLOSING, settlement) -> 4순위
+        When(task_category__in=['CLOSING', 'settlement'], then=Value(4)),
+        
+        default=Value(99), # 기타 -> 맨 뒤
+        output_field=IntegerField(),
+    )
+    
+    # 정렬 적용: 순위(order_rank) -> 마감일(deadline)
+    tasks = event.tasks.all().annotate(order_rank=phase_ordering).order_by('order_rank', 'deadline')
+    
     cues = event.cue_set.all().order_by('order')
     
-    # ==========================================
-    # 🧠 파이썬 계산기 & 시각화 가동
-    # ==========================================
-    
+    # --- 시각화 엔진 ---
     space_report = calculate_space(event)
     graph_space = draw_space(event)
     audio_report = calculate_audio(event)
@@ -140,37 +129,116 @@ def detail(request, event_id):
     
     return render(request, 'main/detail.html', {
         'event': event, 
-        
-        # [Dashboard Data]
-        'd_day': d_day,
+        'd_day': d_day, 
         'progress': progress,
-        # 포맷팅된 재무 데이터 전달
-        'fmt_budget': fmt_budget,
-        'fmt_cost': fmt_cost,
+        'fmt_budget': fmt_budget, 
+        'fmt_cost': fmt_cost, 
         'fmt_profit': fmt_profit,
-        'profit_rate': profit_rate, # 수익률 (%)
-        'profit_raw': profit,       # 색상 판별용 숫자(int)
-
-        # Forms
-        'overview_form': overview_form,
+        'profit_rate': profit_rate, 
+        'profit_raw': profit,
+        'overview_form': overview_form, 
         'space_form': space_form,
-        'task_form': task_form,
+        'task_form': task_form, 
         'form': cue_form,
-        
-        # Lists & Reports
         'tasks': tasks, 
         'cues': cues, 
-        'space': space_report,
+        'space': space_report, 
         'audio': audio_report,
-        'light_patch': light_patch,
-        'light_power': light_power,
+        'light_patch': light_patch, 
+        'light_power': light_power, 
         'gen_info': gen_info,
-        'graph_space': graph_space,
-        'graph_audio': graph_audio,
+        'graph_space': graph_space, 
+        'graph_audio': graph_audio, 
         'graph_light': graph_light
     })
 
-# [신규] 프로젝트 삭제 기능
+# ----------------------------------------------------------------------------------
+# ▼▼▼ Task 관련 함수 (탭 위치 유지: #tab4) ▼▼▼
+# ----------------------------------------------------------------------------------
+
+@login_required
+def task_add(request, event_id):
+    if request.method != 'POST':
+        return redirect(resolve_url('detail', event_id=event_id) + '#tab4')
+
+    event = get_object_or_404(Event, pk=event_id)
+    if event.author != request.user:
+        return HttpResponse("권한이 없습니다.", status=403)
+
+    form = TaskForm(request.POST) 
+    if form.is_valid():
+        task = form.save(commit=False)
+        task.event = event
+        task.save()
+        
+        total_task_budget = event.tasks.aggregate(total=Sum('planned_budget'))['total'] or 0
+        event.expected_cost = total_task_budget 
+        event.save(update_fields=['expected_cost'])
+        
+    return redirect(resolve_url('detail', event_id=event.id) + '#tab4')
+
+@login_required
+def task_delete(request, task_id):
+    if request.method != 'POST':
+        return redirect('index') 
+    
+    task = get_object_or_404(Task, pk=task_id)
+    if task.event.author != request.user:
+        return HttpResponse("권한이 없습니다.", status=403) 
+        
+    event_id = task.event.id
+    task.delete()
+    
+    event = get_object_or_404(Event, pk=event_id)
+    total_task_budget = event.tasks.aggregate(total=Sum('planned_budget'))['total'] or 0
+    event.expected_cost = total_task_budget 
+    event.save(update_fields=['expected_cost'])
+    
+    return redirect(resolve_url('detail', event_id=event_id) + '#tab4')
+
+@login_required
+def task_toggle(request, task_id):
+    if request.method != 'POST':
+        return redirect('index')
+
+    task = get_object_or_404(Task, pk=task_id)
+    if task.event.author != request.user:
+        return HttpResponse("권한이 없습니다.", status=403) 
+        
+    task.is_done = not task.is_done
+    task.save()
+    
+    return redirect(resolve_url('detail', event_id=task.event.id) + '#tab4')
+
+@login_required
+def task_update(request, task_id):
+    task = get_object_or_404(Task, pk=task_id)
+    
+    if task.event.author != request.user:
+        return HttpResponse("권한이 없습니다.", status=403)
+        
+    if request.method == 'POST':
+        form = TaskForm(request.POST, instance=task)
+        if form.is_valid():
+            task = form.save()
+            
+            event = task.event
+            total_task_budget = event.tasks.aggregate(total=Sum('planned_budget'))['total'] or 0
+            event.expected_cost = total_task_budget 
+            event.save(update_fields=['expected_cost']) 
+            
+            return redirect(resolve_url('detail', event_id=event.id) + '#tab4')
+    else:
+        form = TaskForm(instance=task)
+        
+    return render(request, 'main/task_update_form.html', {
+        'form': form, 
+        'task': task, 
+        'event_id': task.event.id
+    })
+
+# 8. 프로젝트 삭제 기능
+@login_required
 def event_delete(request, event_id):
     event = get_object_or_404(Event, pk=event_id)
     if event.author != request.user:
@@ -181,7 +249,7 @@ def event_delete(request, event_id):
         return redirect('index')
     return redirect('index')
 
-# 4. 엑셀 다운로드
+# 9. 엑셀 다운로드
 def export_excel(request, event_id):
     event = get_object_or_404(Event, pk=event_id)
     cues = event.cue_set.all().order_by('order').values('order', 'content', 'duration', 'bgm', 'action')
@@ -200,7 +268,7 @@ def export_excel(request, event_id):
     df.to_excel(response, index=False)
     return response
 
-# 5. 회원가입
+# 10. 회원가입
 def signup(request):
     if request.method == 'POST':
         form = UserCreationForm(request.POST)

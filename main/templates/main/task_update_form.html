@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>Task 수정 - {{ task.content }}</title>
+    <style>
+        body { 
+            background-color: #1e1e1e; 
+            color: #e0e0e0; 
+            font-family: 'Suit', sans-serif; /* 폰트 설정은 환경에 따라 다를 수 있습니다. */
+            margin: 0; 
+            padding: 30px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+        .box { 
+            background-color: #252526; 
+            padding: 25px; 
+            border-radius: 8px; 
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5); 
+            max-width: 600px; 
+            width: 100%;
+        }
+        .section-title { 
+            color: #007acc; 
+            font-size: 24px; 
+            font-weight: bold; 
+            margin-bottom: 25px; 
+            border-left: 5px solid #007acc; 
+            padding-left: 12px; 
+        }
+        label { 
+            display: block; 
+            color: #aaa; 
+            font-size: 13px; 
+            margin-bottom: 5px; 
+            margin-top: 15px;
+            font-weight: bold;
+        }
+        .form-input, select, input[type="text"], input[type="number"], input[type="date"] { 
+            background: #333; 
+            border: 1px solid #444; 
+            color: white; 
+            padding: 10px; 
+            border-radius: 4px; 
+            width: 100%; 
+            box-sizing: border-box; 
+            transition: border-color 0.3s;
+        }
+        select { 
+            appearance: none; /* 기본 셀렉트 박스 스타일 제거 */
+        }
+        .form-input:focus, select:focus, input:focus {
+            border-color: #007acc;
+            outline: none;
+        }
+        .btn-save { 
+            background: #007acc; 
+            color: white; 
+            border: none; 
+            padding: 12px; 
+            border-radius: 4px; 
+            cursor: pointer; 
+            font-weight: bold; 
+            width: 100%; 
+            margin-top: 30px; 
+            transition: background 0.3s; 
+        }
+        .btn-save:hover {
+            background: #005a9c;
+        }
+        .grid-2 { 
+            display: grid; 
+            grid-template-columns: 1fr 1fr; 
+            gap: 20px; 
+        }
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        /* 체크박스 스타일 */
+        input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            margin: 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="box">
+        <div class="section-title">✏️ Task 수정: {{ task.content }}</div>
+        
+        <form method="post" action="{% url 'task_update' task.id %}">
+            {% csrf_token %}
+            
+            <label>업무 내용</label>{{ form.content }}
+            
+            <div class="grid-2">
+                <div><label>업무 단계</label>{{ form.task_category }}</div>
+                <div><label>마감일</label>{{ form.deadline }}</div>
+            </div>
+            
+            <div class="grid-2">
+                <div><label>책정 예산(원)</label>{{ form.planned_budget }}</div>
+                <div><label>실 지출(원)</label>{{ form.actual_cost }}</div>
+            </div>
+
+            <div style="margin-top:15px;">
+                <label>외주 정보</label>
+                <div class="checkbox-group">
+                    <div style="width:120px;">
+                        <label for="{{ form.is_external.id_for_label }}" style="display:inline-block; margin: 0;">{{ form.is_external }} 외주 업무 여부</label>
+                    </div>
+                    <div style="flex-grow:1;">
+                        <label>담당 협력업체</label>{{ form.vendor }}
+                    </div>
+                </div>
+                <div style="margin-top:10px;">
+                    <label>조달 상태</label>{{ form.po_status }}
+                </div>
+            </div>
+            
+            <button type="submit" class="btn-save">Task 정보 수정</button>
+        </form>
+
+        <p style="margin-top:20px; text-align:center;">
+            <a href="{% url 'detail' task.event.id %}" style="color: #007acc; text-decoration: none;">← 상세 페이지로 돌아가기</a>
+        </p>
+    </div>
+</body>
+</html>

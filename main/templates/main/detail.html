@@ -1,12 +1,15 @@
+{% load humanize %}
 <!DOCTYPE html>
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
     <title>{{ event.title }} - Workroom</title>
     <style>
-        /* [기본 테마 유지] */
+        /* [기존 테마 유지] */
         body { background-color: #1e1e1e; color: #e0e0e0; font-family: 'Suit', sans-serif; margin: 0; }
-        .container { max-width: 1200px; margin: 0 auto; padding: 30px; }
+        
+        /* 💡 [수정] 모니터 화면 활용을 위해 폭 확장 (95%) */
+        .container { max-width: 95%; margin: 0 auto; padding: 30px; }
         
         /* [헤더] */
         .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #444; padding-bottom: 20px; margin-bottom: 30px; }
@@ -20,13 +23,13 @@
         .btn-back { color: #aaa; text-decoration: none; font-size: 14px; border: 1px solid #444; padding: 5px 10px; border-radius: 4px; transition: 0.3s; }
         .btn-back:hover { background: #333; color: white; }
 
-        /* [탭 메뉴 - 5개로 확장] */
+        /* [탭 메뉴] */
         .tab-menu { display: flex; gap: 5px; margin-bottom: 20px; border-bottom: 2px solid #333; }
         .tab-btn { 
             padding: 12px 20px; background: #2a2a2a; border: none; color: #888; 
             font-size: 15px; font-weight: bold; cursor: pointer; 
             border-radius: 8px 8px 0 0; transition: 0.3s; margin-bottom: -2px;
-        }
+        } 
         .tab-btn:hover { background: #333; color: white; }
         .tab-btn.active { background: #007acc; color: white; border-bottom: 2px solid #007acc; }
 
@@ -35,11 +38,11 @@
         .tab-content.active { display: block; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
 
-        /* [대시보드 계기판 스타일 (신규)] */
+        /* [대시보드 계기판] */
         .grid-dashboard { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 20px; }
         .dash-card { background: #252526; padding: 20px; border-radius: 8px; text-align: center; box-shadow: 0 4px 6px rgba(0,0,0,0.3); border: 1px solid #333; }
         .dash-label { color: #aaa; font-size: 13px; margin-bottom: 5px; font-weight: bold; }
-        .dash-value { font-size: 26px; font-weight: bold; color: white; font-family: 'Consolas', monospace; } /* 숫자 폰트 강조 */
+        .dash-value { font-size: 26px; font-weight: bold; color: white; font-family: 'Consolas', monospace; } 
         .dash-sub { font-size: 12px; color: #666; margin-top: 5px; }
         
         .progress-bg { width: 100%; background: #444; height: 8px; border-radius: 4px; margin-top: 10px; overflow: hidden; }
@@ -61,6 +64,11 @@
         .btn-save { background: #007acc; color: white; border: none; padding: 12px; border-radius: 4px; cursor: pointer; font-weight: bold; width: 100%; margin-top: 10px; transition: 0.3s; }
         .btn-save:hover { background: #005a9e; }
         
+        /* Task 상태 토글 버튼 */
+        .btn-toggle-done { background: #217346; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; transition: 0.2s; margin-right: 5px;}
+        .btn-toggle-done:hover { background: #1a5c37; }
+        .btn-toggle-done.done { background: #333; border: 1px solid #00ff00; color: #00ff00; } 
+
         .btn-del { background: #ff4b4b; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; }
         .btn-del:hover { background: #cc0000; }
 
@@ -68,6 +76,10 @@
         table { width: 100%; border-collapse: collapse; font-size: 14px; }
         th { text-align: left; padding: 12px; border-bottom: 2px solid #444; color: #aaa; background: #2a2a2a; }
         td { padding: 12px; border-bottom: 1px solid #333; }
+        
+        /* 완료된 Task에 대한 스타일 */
+        tr.task-done td { opacity: 0.6; text-decoration: line-through; }
+        tr.task-done td .btn-toggle-done { opacity: 1; }
 
         /* [텍스트 유틸] */
         .text-warn { color: #ff4b4b; } .text-safe { color: #00ff00; } .text-yellow { color: #ffeb3b; }
@@ -82,8 +94,44 @@
             var btns = document.getElementsByClassName("tab-btn");
             for (var i = 0; i < btns.length; i++) { btns[i].classList.remove("active"); }
             document.getElementById(id).classList.add("active");
-            btn.classList.add("active");
+            
+            // btn이 객체로 넘어올 때와 ID 문자열로 넘어올 때 대응
+            if (typeof btn === 'string') {
+                 // 페이지 로드 시 ID 문자열로 버튼을 찾음
+                 var targetBtn = document.querySelector(`.tab-btn[onclick*="'${id}'"]`);
+                 if (targetBtn) targetBtn.classList.add("active");
+            } else {
+                 // 클릭 시 this 객체 사용
+                 btn.classList.add("active");
+            }
         }
+
+        // 💡 [수정] 폴더형 그룹 토글 기능 (ID 충돌 방지)
+        function toggleGroup(groupId) {
+            var content = document.getElementById('group-' + groupId);
+            var icon = document.getElementById('icon-' + groupId);
+            
+            if (content.style.display === "none" || content.style.display === "") {
+                content.style.display = "table"; 
+                icon.innerHTML = '▼'; 
+            } else {
+                content.style.display = "none";
+                icon.innerHTML = '▶'; 
+            }
+        }
+
+        // 💡 [필수 추가] 페이지 로드 시 URL 해시(#tab4 등)를 확인하여 해당 탭 열기
+        document.addEventListener("DOMContentLoaded", function() {
+            var hash = window.location.hash; // 예: "#tab4"
+            if (hash) {
+                var tabId = hash.substring(1); // "#" 제거 -> "tab4"
+                // 해당 탭 컨텐츠가 실제로 존재하는지 확인
+                if (document.getElementById(tabId)) {
+                    // 문자열 ID를 넘겨 openTab 실행
+                    openTab(tabId, tabId); 
+                }
+            }
+        });
     </script>
 </head>
 <body>
@@ -105,8 +153,8 @@
             <button class="tab-btn active" onclick="openTab('tab1', this)">1. 프로젝트 상황실</button>
             <button class="tab-btn" onclick="openTab('tab2', this)">2. 공간 설계</button>
             <button class="tab-btn" onclick="openTab('tab3', this)">3. 음향/조명</button>
-            <button class="tab-btn" onclick="openTab('tab4', this)">4. 일정 관리</button>
-            <button class="tab-btn" onclick="openTab('tab5', this)">5. 큐시트</button>
+            <button class="tab-btn" onclick="openTab('tab4', this)">4. E.O.S (일정 관리)</button> 
+            <button class="tab-btn" onclick="openTab('tab5', this)">5. 큐시트</button> 
         </div>
 
         <div id="tab1" class="tab-content active">
@@ -290,45 +338,105 @@
                 </div>
             </div>
         </div>
-
+        
         <div id="tab4" class="tab-content">
             <div class="grid-2">
                 <div class="box">
-                    <div class="section-title">📅 프로젝트 일정</div>
-                    <table>
-                        <thead><tr><th>마감일</th><th>D-Day</th><th>내용</th><th>관리</th></tr></thead>
-                        <tbody>
-                            {% for task in tasks %}
-                            <tr>
-                                <td>{{ task.deadline|date:"Y-m-d" }}</td>
-                                <td class="text-warn">{{ task.deadline|timeuntil }}</td>
-                                <td>{{ task.content }}</td>
-                                <td>
-                                    <form method="post" style="display:inline;">
-                                        {% csrf_token %}
-                                        <input type="hidden" name="delete_task" value="true">
-                                        <input type="hidden" name="task_id" value="{{ task.id }}">
-                                        <button type="submit" class="btn-del">삭제</button>
-                                    </form>
-                                </td>
-                            </tr>
-                            {% empty %}
-                            <tr><td colspan="4" style="text-align:center; padding:20px;">등록된 일정이 없습니다.</td></tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
+                    <div class="section-title">📅 E.O.S 프로젝트 Task 목록</div>
+                    
+                    {% regroup tasks by get_task_category_display as categorized_tasks %}
+                    
+                    {% for category in categorized_tasks %}
+                        <div class="task-group-header" 
+                             onclick="toggleGroup('{{ forloop.counter }}')" 
+                             style="cursor:pointer; background:#333; padding:10px 15px; margin-top:10px; border-radius:4px;">
+                            <strong style="color:#007acc; font-size:16px;" id="icon-{{ forloop.counter }}">▼</strong> 
+                            <strong style="color:white; margin-left:10px;">{{ category.grouper }} ({{ category.list|length }}개)</strong>
+                        </div>
+                        
+                        <table id="group-{{ forloop.counter }}" style="width:100%; margin-bottom: 20px;">
+                            <thead>
+                                <tr>
+                                    <th width="10%">마감일</th>
+                                    <th width="40%">내용 (수정)</th>
+                                    <th width="20%">예산/외주</th>
+                                    <th width="15%">관리</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for task in category.list %}
+                                    <tr class="{% if task.is_done %}task-done{% endif %}">
+                                        <td style="color:{% if task.deadline|timeuntil == '0 minutes' or task.deadline < today %}#ff4b4b{% endif %};">
+                                            {{ task.deadline|date:"Y-m-d" }}
+                                        </td>
+                                        
+                                        <td>
+                                            <a href="{% url 'task_update' task.id %}" style="color:white; text-decoration:none; font-weight:bold;">
+                                                {{ task.content }}
+                                            </a>
+                                        </td>
+                                        
+                                        <td>
+                                            <span style="color:#aaa; font-size:12px;">₩ {{ task.planned_budget|default:0|floatformat:"0"|intcomma }}</span> / 
+                                            {% if task.is_external %}
+                                                <span style="color:#ffeb3b; font-weight:bold;">외주 ({{ task.vendor|default:'미정' }})</span>
+                                            {% else %}
+                                                <span style="color:#00ff00;">내부</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <form method="post" action="{% url 'task_toggle' task.id %}" style="display:inline;">
+                                                {% csrf_token %}
+                                                <button type="submit" class="btn-toggle-done {% if task.is_done %}done{% endif %}">
+                                                    {% if task.is_done %}✅ 완료{% else %}⏳ 미완{% endif %}
+                                                </button>
+                                            </form>
+                                            <form method="post" action="{% url 'task_delete' task.id %}" style="display:inline;">
+                                                {% csrf_token %}
+                                                <button type="submit" class="btn-del" onclick="return confirm('정말로 이 일정을 삭제하시겠습니까?');">삭제</button>
+                                            </form>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    {% empty %}
+                        <p style="text-align:center; padding:20px;">등록된 일정이 없습니다.</p>
+                    {% endfor %}
                 </div>
 
                 <div class="box" style="height: fit-content;">
-                    <div class="section-title">➕ 일정 추가하기</div>
-                    <form method="post">
-                        {% csrf_token %}
-                        <input type="hidden" name="add_task" value="true">
-                        <label>할 일 내용</label>
-                        {{ task_form.content }}
-                        <label style="margin-top:15px;">마감일</label>
-                        {{ task_form.deadline }}
-                        <button type="submit" class="btn-save">일정 등록</button>
+                    <div class="section-title">➕ E.O.S Task 추가하기</div>
+                    <form method="post" action="{% url 'task_add' event.id %}"> {% csrf_token %}
+                        <label>업무 내용</label>{{ task_form.content }}
+                        
+                        <div class="grid-2" style="margin-top:15px;">
+                            <div><label>업무 단계</label>{{ task_form.task_category }}</div>
+                            <div><label>마감일</label>{{ task_form.deadline }}</div>
+                        </div>
+
+                        <div class="grid-2" style="margin-top:15px;">
+                            <div><label>업무 유형</label>{{ task_form.task_type }}</div>
+                            <div><label>우선순위</label>{{ task_form.priority }}</div>
+                        </div>
+
+                        <div class="grid-2" style="margin-top:15px;">
+                            <div><label>책정 예산(원)</label>{{ task_form.planned_budget }}</div>
+                            <div><label>실 지출(원)</label>{{ task_form.actual_cost }}</div>
+                        </div>
+
+                        <div style="margin-top:15px;">
+                            <label>외주 정보</label>
+                            <div style="display:flex; gap:10px; align-items:center;">
+                                <div style="width:100px;">{{ task_form.is_external }} 외주 업무</div>
+                                <div style="flex-grow:1;">{{ task_form.vendor }}</div>
+                            </div>
+                            <div style="margin-top:10px;">
+                                <label>조달 상태</label>{{ task_form.po_status }}
+                            </div>
+                        </div>
+                        
+                        <button type="submit" class="btn-save">E.O.S Task 등록</button>
                     </form>
                 </div>
             </div>

@@ -3,9 +3,22 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 import io
 import urllib, base64
+# 💡 [필수 추가] 한글 폰트 설정을 위해 font_manager 임포트
+import matplotlib.font_manager as fm 
 
 # [중요] 서버에서 GUI 에러 방지를 위해 백엔드 설정
 plt.switch_backend('Agg')
+
+# ==========================================
+# 💡 [필수 추가] Matplotlib 한글 폰트 설정
+# ==========================================
+
+# Windows 기본 한글 폰트인 'Malgun Gothic' 설정
+# (Linux/Mac 사용 시 'NanumGothic' 또는 다른 설치된 한글 폰트명으로 변경해야 할 수 있습니다.)
+plt.rcParams['font.family'] = 'Malgun Gothic' 
+
+# 음수 부호가 깨지는 것을 방지
+plt.rcParams['axes.unicode_minus'] = False
 
 # ==========================================
 # 1. 계산 로직
@@ -21,7 +34,7 @@ def calculate_space(event):
     
     if mode == 'theater': # 극장식 (의자만)
         unit_w, unit_d = 0.5, 0.5 # 의자 크기
-        gap_w, gap_d = 0.1, 0.5   # 좌우, 앞뒤 간격
+        gap_w, gap_d = 0.1, 0.5  # 좌우, 앞뒤 간격
         pax_per_unit = 1
         unit_name = "Seats"
     elif mode == 'classroom': # 강의식 (책상+의자)
@@ -170,7 +183,8 @@ class LightingEngine:
 
 def get_image():
     buf = io.BytesIO()
-    plt.savefig(buf, format='png', bbox_inches='tight', facecolor='#252526')
+    # facecolor는 CSS 배경색과 맞추기 위해 #252526 유지
+    plt.savefig(buf, format='png', bbox_inches='tight', facecolor='#252526') 
     buf.seek(0)
     string = base64.b64encode(buf.read())
     uri = urllib.parse.quote(string)
@@ -184,12 +198,13 @@ def draw_space(event):
     fig, ax = plt.subplots(figsize=(6, v_d/v_w*6))
     ax.set_xlim(0, v_w)
     ax.set_ylim(0, v_d)
-    ax.set_facecolor('#f0f0f0')
+    ax.set_facecolor('#f0f0f0') # 배경색은 밝게 유지하여 객석 구분
     
     # 무대
     stage_y = v_d - s_d - 1.0
     ax.add_patch(patches.Rectangle(((v_w-s_w)/2, stage_y), s_w, s_d, color='#333'))
-    ax.text(v_w/2, stage_y + s_d/2, "STAGE", color='white', ha='center', va='center', fontweight='bold')
+    # 💡 [한글 적용]
+    ax.text(v_w/2, stage_y + s_d/2, "무대", color='white', ha='center', va='center', fontweight='bold')
     
     # [업그레이드] 배치 타입별 시각화 분기
     mode = getattr(event, 'seating_type', 'banquet')
@@ -233,7 +248,8 @@ def draw_space(event):
         ax.add_patch(patches.Rectangle(((v_w-6)/2, 0.5), 6, 2.5, facecolor='#ffcccc', edgecolor='red', linestyle='--'))
         ax.text(v_w/2, 1.75, "FOH", color='red', ha='center')
         
-    ax.set_title(f"Layout: {event.get_seating_type_display()}", color='white')
+    # 💡 [한글 적용]
+    ax.set_title(f"레이아웃: {event.get_seating_type_display()}", color='white')
     ax.axis('off')
     return get_image()
 
@@ -261,9 +277,11 @@ def draw_audio(event, audio_specs):
         dy = v_d - audio_specs['delay_pos']
         ax.plot([0, v_w], [dy, dy], 'r--', alpha=0.5)
         ax.scatter([3, v_w-3], [dy, dy], c='red', s=100)
-        ax.text(v_w/2, dy+0.5, f"Delay Point ({audio_specs['delay_pos']:.1f}m)", color='red', ha='center')
+        # 💡 [한글 적용]
+        ax.text(v_w/2, dy+0.5, f"딜레이 포인트 ({audio_specs['delay_pos']:.1f}m)", color='red', ha='center')
         
-    ax.set_title("Audio Coverage Map", color='white')
+    # 💡 [한글 적용]
+    ax.set_title("음향 커버리지 맵", color='white') 
     ax.axis('off')
     return get_image()
 
@@ -283,7 +301,8 @@ def draw_light(event, layout):
     
     ax.set_xlim(-(s_w/2)-2, (s_w/2)+2)
     ax.set_ylim(-(s_d/2)-5, (s_d/2)+2)
-    ax.set_title("Lighting Plot", color='white')
+    # 💡 [한글 적용]
+    ax.set_title("조명 배치 플롯", color='white') 
     ax.grid(True, alpha=0.2)
     ax.axis('off')
     return get_image()
